@@ -37,6 +37,7 @@ void ScanPorts(TargetData args)
 
 int main()
 {
+    //TODO: Implement a better Performance with Threads
     TargetData targetData;
     printf("Target IP: ");
     scanf("%s", targetData.ipAddress);
