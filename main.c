@@ -7,17 +7,19 @@
 
 typedef struct
 {
+    int threadNumber;
     char ipAddress[INET_ADDRSTRLEN];
     int startPort;
     int endPort;
 } TargetData;
 
-void ScanPorts(TargetData args)
+void* ScanPorts(void* args)
 {
+    TargetData* targetData = (TargetData*) args;
     struct sockaddr_in target;
     target.sin_family = AF_INET;
-    inet_pton(AF_INET, args.ipAddress, &target.sin_addr);
-    for(int port = args.startPort; port <= args.endPort; port++)
+    inet_pton(AF_INET, targetData->ipAddress, &target.sin_addr);
+    for(int port = targetData->startPort; port <= targetData->endPort; port++)
     {
         int sock = socket(AF_INET, SOCK_STREAM, 0);
         if(sock < 0)
@@ -45,6 +47,26 @@ int main()
     scanf("%d", &targetData.startPort);
     printf("Set End Port: ");
     scanf("%d", &targetData.endPort);
-    ScanPorts(targetData);
+
+    long availableCPUs = sysconf(_SC_NPROCESSORS_ONLN);
+    pthread_t* threads;
+    threads = malloc(sizeof(pthread_t) * availableCPUs);
+    int portsForThread = (targetData.endPort - targetData.startPort) / availableCPUs;
+    TargetData currentThreadData = targetData;
+    currentThreadData.endPort = currentThreadData.startPort + portsForThread;
+    TargetData* threadsData = malloc(sizeof(TargetData)*availableCPUs);
+    for(int i = 0; i < availableCPUs; i++)
+    {
+        //printf("Thread %d -> Start: %d | End: %d\n", i, currentThreadData.startPort, currentThreadData.endPort); //Debug
+        threadsData[i] = currentThreadData;
+        threadsData[i].threadNumber = i;
+        pthread_create(&threads[i], NULL, ScanPorts, (void*)&threadsData[i]);
+        currentThreadData.startPort = currentThreadData.endPort + 1;
+        currentThreadData.endPort += portsForThread;
+    }
+    while(1)
+    {
+        //TODO Menu
+    }
     return 0;
 }
