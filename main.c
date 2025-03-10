@@ -27,6 +27,7 @@ void* ScanPorts(void* args)
             perror("failed to create socket");
             continue;
         }
+        //printf("[%d] Checking Port: %d\n", targetData->threadNumber, port); //Debug
         target.sin_port = htons(port);
         if(connect(sock, (struct sockaddr*)&target, sizeof(target)) == 0 )
         {
@@ -39,7 +40,6 @@ void* ScanPorts(void* args)
 
 int main()
 {
-    //TODO: Implement a better Performance with Threads
     TargetData targetData;
     printf("Target IP: ");
     scanf("%s", targetData.ipAddress);
@@ -49,24 +49,32 @@ int main()
     scanf("%d", &targetData.endPort);
 
     long availableCPUs = sysconf(_SC_NPROCESSORS_ONLN);
+    int numOfThreads = (availableCPUs <= targetData.endPort - targetData.startPort) ? availableCPUs : (targetData.endPort - targetData.startPort);
+    numOfThreads = (numOfThreads == 0) ? numOfThreads + 1 : numOfThreads;
     pthread_t* threads;
-    threads = malloc(sizeof(pthread_t) * availableCPUs);
-    int portsForThread = (targetData.endPort - targetData.startPort) / availableCPUs;
+    threads = malloc(sizeof(pthread_t) * numOfThreads);
+    int portsForThread = (targetData.endPort - targetData.startPort) / numOfThreads;
     TargetData currentThreadData = targetData;
     currentThreadData.endPort = currentThreadData.startPort + portsForThread;
-    TargetData* threadsData = malloc(sizeof(TargetData)*availableCPUs);
-    for(int i = 0; i < availableCPUs; i++)
+    TargetData* threadsData = malloc(sizeof(TargetData)*numOfThreads);
+    for(int i = 0; i < numOfThreads; i++)
     {
-        //printf("Thread %d -> Start: %d | End: %d\n", i, currentThreadData.startPort, currentThreadData.endPort); //Debug
         threadsData[i] = currentThreadData;
         threadsData[i].threadNumber = i;
+        if(i == numOfThreads -1)
+        {
+            threadsData[i].endPort += (targetData.endPort - threadsData[i].endPort != 0) ? targetData.endPort - threadsData[i].endPort : 0;
+            
+        }
+        //printf("Thread %d -> Start: %d | End: %d\n", i, threadsData[i].startPort, threadsData[i].endPort); //Debug
         pthread_create(&threads[i], NULL, ScanPorts, (void*)&threadsData[i]);
         currentThreadData.startPort = currentThreadData.endPort + 1;
         currentThreadData.endPort += portsForThread;
     }
-    while(1)
+    
+    for(int i = 0 ; i < numOfThreads; i++)
     {
-        //TODO Menu
+        pthread_join(threads[i], NULL);
     }
     return 0;
 }
