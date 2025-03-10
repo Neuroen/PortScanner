@@ -47,6 +47,7 @@ int main()
     scanf("%d", &targetData.startPort);
     printf("Set End Port: ");
     scanf("%d", &targetData.endPort);
+    targetData.endPort = (targetData.endPort < targetData.startPort) ? targetData.startPort : targetData.endPort;
 
     long availableCPUs = sysconf(_SC_NPROCESSORS_ONLN);
     int numOfThreads = (availableCPUs <= targetData.endPort - targetData.startPort) ? availableCPUs : (targetData.endPort - targetData.startPort);
